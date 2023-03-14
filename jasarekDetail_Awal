@@ -1,0 +1,171 @@
+<?php
+defined('BASEPATH') or exit('No direct script access allowed');
+
+class jasarekDetail extends Public_Controller
+{
+    private $dbKeuangan = "db_simrs_ruteng_keuangan.";
+    protected $htmlRajal = "";
+    protected $htmlOperasi = "";
+    protected $htmlRanap = "";
+    protected $htmlRanapGabung = "";
+    public function __construct()
+    {
+        parent::__construct();
+        $this->load->model("jasa/jasa_m");
+    }
+
+    public function getDetail()
+    {
+
+        $kode = urlsafe_b64decode($this->input->get('kode'));
+        $tglawal = $this->input->get('tglawal');
+        $tglakhir = $this->input->get('tglakhir');
+        if ($tglawal == $tglakhir) {
+            $periode = "Periode : " . date("d-m-Y", strtotime($tglawal));
+        } else {
+            $periode = "Periode : " . date("d-m-Y", strtotime($tglawal)) . " S/D " . date("d-m-Y", strtotime($tglakhir));
+        }
+
+        // get sql code for get the group
+        $sql = "SELECT 
+        deskripsi
+        FROM db_simrs_keuangan.tb_grup_rek_detail
+        WHERE idkategori = '" . $kode . "'
+        AND createdate >='" . $tglawal . "'
+        AND createdate <= '" . $tglakhir . "'
+        GROUP BY deskripsi
+        ";
+        $qGrup = $this->db->query($sql)->result();
+
+        //Get Name Rekening
+        $sqlName = "SELECT deksripsi FROM db_simrs_keuangan.tb_rek_kategori WHERE idkategori = '" . $kode . "'";
+        //echo $sqlName;
+        $qName = $this->db->query($sqlName)->row();
+
+        $this->data["data"] = $qGrup;
+        $this->data["periode"] = $periode;
+        $this->data["name"] = $qName->deksripsi;
+        $this->data["kode"] = $kode;
+        $this->data["tgl"] = array(
+            "tglawal" => $tglawal,
+            "tglAkhir" => $tglakhir
+        );
+        $this->template->admin_render('jasa/jasarekDetail/v_detail', $this->data);
+        // your code here...
+
+    }
+
+    public function getDetailNorawat()
+    {
+        // get post value from ajax
+        $kat = $this->input->post('kat');
+        $deskripsi = $this->input->post('deskirpsi');
+        $tglAwal = $this->input->post('tglAwal');
+        $tglAkhir = $this->input->post('tglAkhir');
+        //echo $kat;
+        // get data sql db keuangan
+        if ($kat == '01.018') {
+            $sql = "SELECT 
+                (
+                    CASE 
+                        WHEN jns ='AKO' AND  jnsKunjungan = 'RG' THEN 'AKOMODASI RANAP GABUNG'
+                        WHEN jns='BL' AND jnsKunjungan = 'RG' THEN 'BILLING LANGSUNG RANAP GABUNG' 
+                        WHEN jns='Lab' AND jnsKunjungan = 'RG' THEN 'LABORATORIUM RANAP GABUNG'
+                        WHEN jns='Rad' AND jnsKunjungan = 'RG' THEN 'RADIOLOGI RANAP GABUNG'
+                        WHEN jns='O' AND jnsKunjungan = 'RG' THEN 'OPERASI RANAP GABUNG'
+                        WHEN jns='K' AND jnsKunjungan = 'RG' THEN 'KONSUL RANAP GABUNG'
+                        WHEN jns='RI' AND jnsKunjungan = 'RG' THEN 'TINDAKAN RANAP GABUNG'
+                        WHEN jns='KAR' THEN deskripsi  
+                        WHEN jns ='AKO' AND jnsKunjungan = 'RI' THEN deskripsi
+                        WHEN jns='Lab' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Laboratorium Rajal'
+                        WHEN jns='Lab' AND jnsKunjungan = 'RI' THEN 'Pendapatan Laboratorium Ranap'
+                        WHEN jns='Rad' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Radiologi Rajal'
+                        WHEN jns='Rad' AND jnsKunjungan = 'RI' THEN 'Pendapatan Radiologi Ranap'
+                        WHEN jns='O' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Operasi Rajal'
+                        WHEN jns='O' AND jnsKunjungan = 'RI' THEN 'Pendapatan Operasi Ranap'
+                        WHEN jns='BL' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Billing Langsung Rajal'
+                        WHEN jns='BL' AND jnsKunjungan = 'RI' THEN 'Pendapatan Billing Langsung Ranap'
+                        WHEN jns='K' THEN 
+                            (SELECT nm_poli FROM poliklinik WHERE kd_poli = grupunit)
+                        WHEN jns = 'RJ' THEN
+                            (SELECT nm_poli FROM poliklinik WHERE kd_poli = grupunit)
+                        ELSE 
+                            (SELECT nm_bangsal from bangsal WHERE kd_bangsal = grupunit)
+                    END
+                ) as deskripsiGroup,
+                tr.norawat_ibu as no_rawat,
+                rm.no_rkm_medis,
+                rm.nm_pasien,
+                sum(jml) as jml,
+                sum(alat) as alat,
+                sum(sarana) as sarana,
+                sum(pelayanan) as pelayanan,
+                sum(medis) as medis,
+                sum(asisten) as asisten,
+                sum(anastesi) as anastesi,
+                sum(akomodasi) as akomodasi,
+                sum((alat+sarana+pelayanan+medis+anastesi+asisten+akomodasi)) as total
+                FROM db_simrs_keuangan.tb_rek_detail tr
+                LEFT JOIN db_simrs_rm.rm_reg_rajal_detail rm on rm.no_rawat = tr.norawat_ibu
+                WHERE idkategori = '" . $kat . "'  AND (createdate >= '" . $tglAwal . "' AND createdate <= '" . $tglAkhir . "')
+                GROUP BY deskripsiGroup,norawat_ibu order by deskripsiGroup";
+        } else {
+            $sql = "SELECT 
+                (
+                    CASE 
+                        WHEN jns ='AKO' AND  jnsKunjungan = 'RG' THEN 'AKOMODASI RANAP GABUNG'
+                        WHEN jns='BL' AND jnsKunjungan = 'RG' THEN 'BILLING LANGSUNG RANAP GABUNG' 
+                        WHEN jns='Lab' AND jnsKunjungan = 'RG' THEN 'LABORATORIUM RANAP GABUNG'
+                        WHEN jns='Rad' AND jnsKunjungan = 'RG' THEN 'RADIOLOGI RANAP GABUNG'
+                        WHEN jns='O' AND jnsKunjungan = 'RG' THEN 'OPERASI RANAP GABUNG'
+                        WHEN jns='K' AND jnsKunjungan = 'RG' THEN 'KONSUL RANAP GABUNG'
+                        WHEN jns='RI' AND jnsKunjungan = 'RG' THEN 'TINDAKAN RANAP GABUNG'
+                        WHEN jns='KAR' THEN deskripsi  
+                        WHEN jns ='AKO' AND jnsKunjungan = 'RI' THEN deskripsi
+                        WHEN jns='Lab' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Laboratorium Rajal'
+                        WHEN jns='Lab' AND jnsKunjungan = 'RI' THEN 'Pendapatan Laboratorium Ranap'
+                        WHEN jns='Rad' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Radiologi Rajal'
+                        WHEN jns='Rad' AND jnsKunjungan = 'RI' THEN 'Pendapatan Radiologi Ranap'
+                        WHEN jns='O' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Operasi Rajal'
+                        WHEN jns='O' AND jnsKunjungan = 'RI' THEN 'Pendapatan Operasi Ranap'
+                        WHEN jns='BL' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Billing Langsung Rajal'
+                        WHEN jns='BL' AND jnsKunjungan = 'RI' THEN 'Pendapatan Billing Langsung Ranap'
+                        WHEN jns='K' THEN 
+                            (SELECT nm_poli FROM poliklinik WHERE kd_poli = grupunit)
+                        WHEN jns = 'RJ' THEN
+                            (SELECT nm_poli FROM poliklinik WHERE kd_poli = grupunit)
+                        ELSE 
+                            (SELECT nm_bangsal from bangsal WHERE kd_bangsal = grupunit)
+                    END
+                ) as deskripsiGroup,
+                tr.no_rawat,
+                rm.no_rkm_medis,
+                rm.nm_pasien,
+                sum(jml) as jml,
+                sum(alat) as alat,
+                sum(sarana) as sarana,
+                sum(pelayanan) as pelayanan,
+                sum(medis) as medis,
+                sum(asisten) as asisten,
+                sum(anastesi) as anastesi,
+                sum(akomodasi) as akomodasi,
+                sum((alat+sarana+pelayanan+medis+anastesi+asisten+akomodasi)*jml) as total
+                FROM db_simrs_keuangan.tb_rek_detail tr
+                LEFT JOIN db_simrs_rm.rm_reg_rajal_detail rm on rm.no_rawat = tr.no_rawat
+                WHERE idkategori = '" . $kat . "'  AND (createdate >= '" . $tglAwal . "' AND createdate <= '" . $tglAkhir . "')
+                GROUP BY deskripsiGroup,no_rawat order by deskripsiGroup";
+        }
+
+
+
+        //echo $sql;
+        $qData = $this->db->query($sql)->result_array();
+
+        //fetchData 
+
+        //print_r($qData);
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode($qData));
+    }
+}
