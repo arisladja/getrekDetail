@@ -3,7 +3,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class jasarekDetail extends Public_Controller
 {
-    private $dbKeuangan = "db_simrs_ruteng_keuangan.";
+    private $dbKeuangan = "db_simrs_keuangan.";
     protected $htmlRajal = "";
     protected $htmlOperasi = "";
     protected $htmlRanap = "";
@@ -97,30 +97,30 @@ class jasarekDetail extends Public_Controller
                 rm.no_rkm_medis,
                 rm.nm_pasien,
                 sum(jml) as jml,
-                sum(alat) as alat,
-                sum(sarana) as sarana,
-                sum(pelayanan) as pelayanan,
-                sum(medis) as medis,
-                sum(asisten) as asisten,
-                sum(anastesi) as anastesi,
-                sum(akomodasi) as akomodasi,
-                sum((alat+sarana+pelayanan+medis+anastesi+asisten+akomodasi)) as total
-                FROM db_simrs_keuangan.tb_rek_detail tr
+                sum(alat * jml) as alat,
+                sum(sarana * jml) as sarana,
+                sum(pelayanan * jml) as pelayanan,
+                sum(medis * jml) as medis,
+                sum(asisten * jml) as asisten,
+                sum(anastesi * jml) as anastesi,
+                sum(akomodasi * jml) as akomodasi,
+                sum((alat+sarana+pelayanan+medis+anastesi+asisten+akomodasi) * jml) as total
+                FROM db_simrs_keuangan.tb_rek_detail rkd
                 LEFT JOIN db_simrs_rm.rm_reg_rajal_detail rm on rm.no_rawat = tr.norawat_ibu
                 WHERE idkategori = '" . $kat . "'  AND (createdate >= '" . $tglAwal . "' AND createdate <= '" . $tglAkhir . "')
                 GROUP BY deskripsiGroup,norawat_ibu order by deskripsiGroup";
         } else {
-            $sql = "SELECT 
+            $sql = "SELECT
                 (
-                    CASE 
-                        WHEN jns ='AKO' AND  jnsKunjungan = 'RG' THEN 'AKOMODASI RANAP GABUNG'
-                        WHEN jns='BL' AND jnsKunjungan = 'RG' THEN 'BILLING LANGSUNG RANAP GABUNG' 
+                    CASE
+                        WHEN jns ='AKO' AND jnsKunjungan = 'RG' THEN 'AKOMODASI RANAP GABUNG'
+                        WHEN jns='BL' AND jnsKunjungan = 'RG' THEN 'BILLING LANGSUNG RANAP GABUNG'
                         WHEN jns='Lab' AND jnsKunjungan = 'RG' THEN 'LABORATORIUM RANAP GABUNG'
                         WHEN jns='Rad' AND jnsKunjungan = 'RG' THEN 'RADIOLOGI RANAP GABUNG'
                         WHEN jns='O' AND jnsKunjungan = 'RG' THEN 'OPERASI RANAP GABUNG'
                         WHEN jns='K' AND jnsKunjungan = 'RG' THEN 'KONSUL RANAP GABUNG'
                         WHEN jns='RI' AND jnsKunjungan = 'RG' THEN 'TINDAKAN RANAP GABUNG'
-                        WHEN jns='KAR' THEN deskripsi  
+                        WHEN jns='KAR' THEN deskripsi
                         WHEN jns ='AKO' AND jnsKunjungan = 'RI' THEN deskripsi
                         WHEN jns='Lab' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Laboratorium Rajal'
                         WHEN jns='Lab' AND jnsKunjungan = 'RI' THEN 'Pendapatan Laboratorium Ranap'
@@ -130,11 +130,11 @@ class jasarekDetail extends Public_Controller
                         WHEN jns='O' AND jnsKunjungan = 'RI' THEN 'Pendapatan Operasi Ranap'
                         WHEN jns='BL' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Billing Langsung Rajal'
                         WHEN jns='BL' AND jnsKunjungan = 'RI' THEN 'Pendapatan Billing Langsung Ranap'
-                        WHEN jns='K' THEN 
+                        WHEN jns='K' THEN
                             (SELECT nm_poli FROM poliklinik WHERE kd_poli = grupunit)
                         WHEN jns = 'RJ' THEN
                             (SELECT nm_poli FROM poliklinik WHERE kd_poli = grupunit)
-                        ELSE 
+                        ELSE
                             (SELECT nm_bangsal from bangsal WHERE kd_bangsal = grupunit)
                     END
                 ) as deskripsiGroup,
@@ -142,14 +142,14 @@ class jasarekDetail extends Public_Controller
                 rm.no_rkm_medis,
                 rm.nm_pasien,
                 sum(jml) as jml,
-                sum(alat) as alat,
-                sum(sarana) as sarana,
-                sum(pelayanan) as pelayanan,
-                sum(medis) as medis,
-                sum(asisten) as asisten,
-                sum(anastesi) as anastesi,
-                sum(akomodasi) as akomodasi,
-                sum((alat+sarana+pelayanan+medis+anastesi+asisten+akomodasi)*jml) as total
+                sum(alat) * sum(jml) as alat,
+                sum(sarana) * sum(jml) as sarana,
+                sum(pelayanan) * sum(jml) as pelayanan,
+                sum(medis) * sum(jml) as medis,
+                sum(asisten) * sum(jml) as asisten,
+                sum(anastesi) * sum(jml) as anastesi,
+                sum(akomodasi) * sum(jml) as akomodasi,
+                sum((alat+sarana+pelayanan+medis+anastesi+asisten+akomodasi)* jml) as total
                 FROM db_simrs_keuangan.tb_rek_detail tr
                 LEFT JOIN db_simrs_rm.rm_reg_rajal_detail rm on rm.no_rawat = tr.no_rawat
                 WHERE idkategori = '" . $kat . "'  AND (createdate >= '" . $tglAwal . "' AND createdate <= '" . $tglAkhir . "')
